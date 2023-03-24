@@ -2,6 +2,7 @@
 
 # variables
 MY_PROJECT_DIR="mymisago"
+# MY_PROJECT_DIR="django_forum"
 MY_PROJECT_ENV_DIR="mymisagoenv"
 DJANGO_PROJECT_NAME="myproject"
 NGINX_SITE_NAME="my_misago"
@@ -12,15 +13,16 @@ DB_BACKUP_FILE="backup.sql"
 
 
 # copy the whole project or clone from github in the future
-cp -r $MY_PROJECT_DIR/ ~/
-# git clone ....
+cd ~
+# cp -r $MY_PROJECT_DIR/ ~/
+git clone git@github.com:NZdreamer/django_forum.git
 
 # install the packages
 sudo apt update
 sudo apt install python3-venv python3-dev libpq-dev postgresql postgresql-contrib nginx curl
 
 # database 
-sudo -u postgres psql
+# sudo -u postgres psql
 
 
 # virtual env
@@ -31,10 +33,10 @@ pip install django gunicorn psycopg2-binary
 
 
 # database ?????
-~/$MY_PROJECT_DIR/manage.py makemigrations
-~/$MY_PROJECT_DIR/manage.py migrate
-~/$MY_PROJECT_DIR/manage.py createsuperuser
-~/$MY_PROJECT_DIR/manage.py collectstatic
+# ~/$MY_PROJECT_DIR/manage.py makemigrations
+# ~/$MY_PROJECT_DIR/manage.py migrate
+# ~/$MY_PROJECT_DIR/manage.py createsuperuser
+# ~/$MY_PROJECT_DIR/manage.py collectstatic
 
 deactivate
 
@@ -114,6 +116,14 @@ sudo snap install core; sudo snap refresh core
 sudo apt remove certbot
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
-# Obtaining an SSL Certificate
-sudo certbot --nginx -d ${SERVER_DOMAINS[0]} -d ${SERVER_DOMAINS[1]}
 
+# Check for existing certificates
+for SERVER_DOMAIN in ${SERVER_DOMAINS[@]}
+do
+    if sudo certbot certificates --domain $SERVER_DOMAIN | grep -q 'Certificate Path'; then
+        echo "Certificate already exists for domain $SERVER_DOMAIN"
+    else
+        # Obtaining an SSL Certificate
+        sudo certbot --nginx -d $SERVER_DOMAIN
+    fi
+done
