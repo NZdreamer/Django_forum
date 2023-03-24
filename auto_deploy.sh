@@ -31,18 +31,23 @@ deactivate
 
 # guinicorn
 
-sudo cat >> /etc/systemd/system/gunicorn.socket << EOF 
-[Unit]
+# gunicorn.socket
+sudo cp /etc/systemd/system/gunicorn.socket /etc/systemd/system/gunicorn.socket.bak
+
+SOCKET_CONTENT="[Unit]
 Description=gunicorn socket
 
 [Socket]
 ListenStream=/run/gunicorn.sock
 
 [Install]
-WantedBy=sockets.target
-EOF
+WantedBy=sockets.target"
 
+sudo bash -c "echo '$SOCKET_CONTENT' > /etc/systemd/system/gunicorn.socket"
+
+# gunicorn.service
 sudo cp /etc/systemd/system/gunicorn.service /etc/systemd/system/gunicorn.service.bak
+
 SERVICE_CONTENT="[Unit]
 Description=gunicorn daemon
 Requires=gunicorn.socket
