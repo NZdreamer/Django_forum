@@ -3,25 +3,34 @@
 # variables
 MY_PROJECT_DIR="mymisago"
 MY_PROJECT_ENV_DIR="mymisagoenv"
-DJANGO_PROJECT_DIR="myproject"
+DJANGO_PROJECT_NAME="myproject"
 NGINX_SITE_NAME="my_misago"
 USER_NAME="lucifer"
 SERVER_DOMAINS=("nzdreamer.com" "www.nzdreamer.com")
+DB_NAME="myproject"
+DB_BACKUP_FILE="backup.sql"
 
 
-mkdir ~/$MY_PROJECT_DIR
-cd ~/$MY_PROJECT_DIR
+# copy the whole project or clone from github in the future
+cp -r $MY_PROJECT_DIR/ ~/
+# git clone ....
 
-# copy the whole project
-cp -r $DJANGO_PROJECT_DIR/ .
+# install the packages
+sudo apt update
+sudo apt install python3-venv python3-dev libpq-dev postgresql postgresql-contrib nginx curl
+
+# database 
+sudo -u postgres psql
+
 
 # virtual env
+cd ~/$MY_PROJECT_DIR
 python3 -m venv $MY_PROJECT_ENV_DIR
 source $MY_PROJECT_ENV_DIR/bin/activate
 pip install django gunicorn psycopg2-binary
 
 
-# database ??
+# database ?????
 ~/$MY_PROJECT_DIR/manage.py makemigrations
 ~/$MY_PROJECT_DIR/manage.py migrate
 ~/$MY_PROJECT_DIR/manage.py createsuperuser
@@ -57,21 +66,24 @@ After=network.target
 User=$USER_NAME
 Group=www-data
 WorkingDirectory=/home/$USER_NAME/$MY_PROJECT_DIR
-ExecStart=/home/$USER_NAME/$MY_PROJECT_DIR/$MY_PROJECT_ENV_DIR/bin/gunicorn \\ 
-          --access-logfile - \\
-          --workers 3 \\
-          --bind unix:/run/gunicorn.sock \\
-          $DJANGO_PROJECT_DIR.wsgi:application 
+ExecStart=/home/$USER_NAME/$MY_PROJECT_DIR/$MY_PROJECT_ENV_DIR/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn.sock \
+          $DJANGO_PROJECT_NAME.wsgi:application 
 
 [Install]
 WantedBy=multi-user.target" 
 
 sudo bash -c "echo '$SERVICE_CONTENT' > /etc/systemd/system/gunicorn.service"
 
+sudo systemctl daemon-reload
+sudo systemctl restart gunicorn.socket gunicorn.service
+
 sudo systemctl start gunicorn.socket
 sudo systemctl enable gunicorn.socket
 
-# nginx
+# Nginx
 sudo cp /etc/nginx/sites-available/${NGINX_SITE_NAME} /etc/nginx/sites-available/${NGINX_SITE_NAME}.bak
 
 NGINX_CONTENT="server {
@@ -93,17 +105,15 @@ sudo bash -c "echo '$NGINX_CONTENT' > /etc/nginx/sites-available/$NGINX_SITE_NAM
 
 
 sudo ln -s /etc/nginx/sites-available/$NGINX_SITE_NAME /etc/nginx/sites-enabled
-sudo systemctl restart nginx
-sudo ufw delete allow 8000
+# sudo systemctl restart nginx
 sudo ufw allow 'Nginx Full'
+sudo nginx -t && sudo systemctl restart nginx
 
 # Secure Nginx with Let's Encrypt
 sudo snap install core; sudo snap refresh core
 sudo apt remove certbot
 sudo snap install --classic certbot
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
-sudo ufw allow 'Nginx Full'
-sudo ufw delete allow 'Nginx HTTP'
 # Obtaining an SSL Certificate
 sudo certbot --nginx -d ${SERVER_DOMAINS[0]} -d ${SERVER_DOMAINS[1]}
 
