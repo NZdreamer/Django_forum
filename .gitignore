@@ -1,3 +1,4 @@
 mymisagoenv/
 static/
 .env
+settings.py
