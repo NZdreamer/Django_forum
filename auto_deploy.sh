@@ -1,12 +1,12 @@
-#!/bin/sh
+#!/bin/bash
 
 # variables
 MY_PROJECT_DIR="mymisago"
 MY_PROJECT_ENV_DIR="mymisagoenv"
 DJANGO_PROJECT_DIR="myproject"
-NGINX_DIR="my_misago"
+NGINX_SITE_NAME="my_misago"
 USER_NAME="lucifer"
-SERVER_DOMAIN="nzdreamer.com www.nzdreamer.com"
+SERVER_DOMAINS=("nzdreamer.com" "www.nzdreamer.com")
 
 
 mkdir ~/$MY_PROJECT_DIR
@@ -72,10 +72,11 @@ sudo systemctl start gunicorn.socket
 sudo systemctl enable gunicorn.socket
 
 # nginx
-sudo cat >> /etc/nginx/sites-available/$DJANGO_PROJECT_DIR << EOF 
-server {
+sudo cp /etc/nginx/sites-available/${NGINX_SITE_NAME} /etc/nginx/sites-available/${NGINX_SITE_NAME}.bak
+
+NGINX_CONTENT="server {
     listen 80;
-    server_name $SERVER_DOMAIN;
+    server_name ${SERVER_DOMAINS[@]};
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
@@ -86,10 +87,23 @@ server {
         include proxy_params;
         proxy_pass http://unix:/run/gunicorn.sock;
     }
-}
-EOF
+}"
 
-sudo ln -s /etc/nginx/sites-available/$NGINX_DIR /etc/nginx/sites-enabled
+sudo bash -c "echo '$NGINX_CONTENT' > /etc/nginx/sites-available/$NGINX_SITE_NAME"
+
+
+sudo ln -s /etc/nginx/sites-available/$NGINX_SITE_NAME /etc/nginx/sites-enabled
 sudo systemctl restart nginx
 sudo ufw delete allow 8000
 sudo ufw allow 'Nginx Full'
+
+# Secure Nginx with Let's Encrypt
+sudo snap install core; sudo snap refresh core
+sudo apt remove certbot
+sudo snap install --classic certbot
+sudo ln -s /snap/bin/certbot /usr/bin/certbot
+sudo ufw allow 'Nginx Full'
+sudo ufw delete allow 'Nginx HTTP'
+# Obtaining an SSL Certificate
+sudo certbot --nginx -d ${SERVER_DOMAINS[0]} -d ${SERVER_DOMAINS[1]}
+
