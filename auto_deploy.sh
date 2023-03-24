@@ -1,9 +1,10 @@
 #!/bin/sh
 
 # variables
-MY_PROJECT_DIR="myprojectdir"
-MY_PROJECT_ENV_DIR="myprojectenv"
-DJANGO_PROJECT_DIR="my_misago"
+MY_PROJECT_DIR="mymisago"
+MY_PROJECT_ENV_DIR="mymisagoenv"
+DJANGO_PROJECT_DIR="myproject"
+NGINX_DIR="my_misago"
 USER_NAME="lucifer"
 SERVER_DOMAIN="nzdreamer.com www.nzdreamer.com"
 
@@ -29,8 +30,20 @@ pip install django gunicorn psycopg2-binary
 deactivate
 
 # guinicorn
+
 sudo cat >> /etc/systemd/system/gunicorn.socket << EOF 
 [Unit]
+Description=gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn.sock
+
+[Install]
+WantedBy=sockets.target
+EOF
+
+sudo cp /etc/systemd/system/gunicorn.service /etc/systemd/system/gunicorn.service.bak
+SERVICE_CONTENT="[Unit]
 Description=gunicorn daemon
 Requires=gunicorn.socket
 After=network.target
@@ -39,15 +52,16 @@ After=network.target
 User=$USER_NAME
 Group=www-data
 WorkingDirectory=/home/$USER_NAME/$MY_PROJECT_DIR
-ExecStart=/home/$USER_NAME/$MY_PROJECT_DIR/$MY_PROJECT_ENV_DIR/bin/gunicorn \ 
-          --access-logfile - \
-          --workers 3 \
-          --bind unix:/run/gunicorn.sock \
+ExecStart=/home/$USER_NAME/$MY_PROJECT_DIR/$MY_PROJECT_ENV_DIR/bin/gunicorn \\ 
+          --access-logfile - \\
+          --workers 3 \\
+          --bind unix:/run/gunicorn.sock \\
           $DJANGO_PROJECT_DIR.wsgi:application 
 
 [Install]
-WantedBy=multi-user.target
-EOF
+WantedBy=multi-user.target" 
+
+sudo bash -c "echo '$SERVICE_CONTENT' > /etc/systemd/system/gunicorn.service"
 
 sudo systemctl start gunicorn.socket
 sudo systemctl enable gunicorn.socket
@@ -70,7 +84,7 @@ server {
 }
 EOF
 
-sudo ln -s /etc/nginx/sites-available/$DJANGO_PROJECT_DIR /etc/nginx/sites-enabled
+sudo ln -s /etc/nginx/sites-available/$NGINX_DIR /etc/nginx/sites-enabled
 sudo systemctl restart nginx
 sudo ufw delete allow 8000
 sudo ufw allow 'Nginx Full'
